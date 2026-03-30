@@ -1,0 +1,21 @@
+# Build output
+dist/
+bin/
+*.exe
+*.out
+
+# Go
+vendor/
+
+# State & backups (user-specific, not committed)
+.aispace-setup/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
