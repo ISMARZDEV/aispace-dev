@@ -29,6 +29,16 @@ const (
 	PersonaNeutral    PersonaID = "neutral"
 	PersonaDominicano PersonaID = "dominicano"
 	PersonaAlien      PersonaID = "alien"
+	PersonaCustom     PersonaID = "custom" // user keeps their own config, nothing injected
+)
+
+// SkillID identifies a skill file (maps to assets/skills/<id>/SKILL.md).
+type SkillID string
+
+const (
+	SkillJudgmentDay   SkillID = "judgment-day"
+	SkillBranchPR      SkillID = "branch-pr"
+	SkillIssueCreation SkillID = "issue-creation"
 )
 
 // PresetID identifies a predefined component bundle.

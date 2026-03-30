@@ -40,7 +40,7 @@ func restoreEntry(entry ManifestEntry) error {
 		return fmt.Errorf("create restore dir for %q: %w", entry.OriginalPath, err)
 	}
 
-	if err := filemerge.WriteFileAtomic(entry.OriginalPath, content, os.FileMode(entry.Mode)); err != nil {
+	if _, err := filemerge.WriteFileAtomic(entry.OriginalPath, content, os.FileMode(entry.Mode)); err != nil {
 		return fmt.Errorf("restore %q: %w", entry.OriginalPath, err)
 	}
 
