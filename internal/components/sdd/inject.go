@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ismartz/aispace-setup/assets"
 	"github.com/ismartz/aispace-setup/internal/agents"
@@ -61,10 +62,12 @@ func Inject(homeDir string, adapter agents.Adapter) (InjectionResult, error) {
 
 func injectOrchestrator(homeDir string, adapter agents.Adapter) ([]string, bool, error) {
 	assetPath := orchestratorAssetPath(adapter.Agent())
-	content, err := assets.Read(assetPath)
+	raw, err := assets.Read(assetPath)
 	if err != nil {
 		return nil, false, fmt.Errorf("sdd: read orchestrator asset %q: %w", assetPath, err)
 	}
+	// Strip outer section markers that the asset includes for standalone readability.
+	content := stripSectionWrapper(raw, "sdd-orchestrator")
 
 	promptPath := adapter.SystemPromptFile(homeDir)
 
@@ -86,7 +89,7 @@ func injectOrchestrator(homeDir string, adapter agents.Adapter) ([]string, bool,
 		if err != nil {
 			return nil, false, fmt.Errorf("sdd: read %q: %w", promptPath, err)
 		}
-		updated := filemerge.InjectMarkdownSection(existing, "sdd-orchestrator", content)
+		updated := filemerge.InjectMarkdownSection(existing, "sdd-orchestrator", content) //nolint:govet
 		result, err := filemerge.WriteFileAtomic(promptPath, []byte(updated), 0o644)
 		if err != nil {
 			return nil, false, fmt.Errorf("sdd: write %q: %w", promptPath, err)
@@ -136,6 +139,21 @@ func orchestratorAssetPath(agent model.AgentID) string {
 	default:
 		return "claude/sdd-orchestrator.md"
 	}
+}
+
+// stripSectionWrapper removes the outer <!-- ai-setup:id --> / <!-- /ai-setup:id --> markers
+// from asset files that include them for standalone readability.
+func stripSectionWrapper(content, sectionID string) string {
+	open := fmt.Sprintf("<!-- ai-setup:%s -->", sectionID)
+	close := fmt.Sprintf("<!-- /ai-setup:%s -->", sectionID)
+
+	start := strings.Index(content, open)
+	end := strings.Index(content, close)
+	if start == -1 || end == -1 || end <= start {
+		return content
+	}
+
+	return strings.TrimSpace(content[start+len(open) : end])
 }
 
 func readFileOrEmpty(path string) (string, error) {

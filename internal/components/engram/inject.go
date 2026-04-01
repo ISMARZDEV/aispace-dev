@@ -3,6 +3,7 @@ package engram
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ismartz/aispace-setup/assets"
 	"github.com/ismartz/aispace-setup/internal/agents"
@@ -23,10 +24,13 @@ func Inject(homeDir string, adapter agents.Adapter) (InjectionResult, error) {
 		return InjectionResult{}, nil
 	}
 
-	protocol, err := assets.Read("claude/engram-protocol.md")
+	raw, err := assets.Read("claude/engram-protocol.md")
 	if err != nil {
 		return InjectionResult{}, fmt.Errorf("engram: read protocol asset: %w", err)
 	}
+	// The asset file wraps content in ai-setup section markers for standalone readability.
+	// Strip them before passing to InjectMarkdownSection, which adds its own markers.
+	protocol := stripSectionWrapper(raw, "engram-protocol")
 
 	promptPath := adapter.SystemPromptFile(homeDir)
 
@@ -60,6 +64,22 @@ func Inject(homeDir string, adapter agents.Adapter) (InjectionResult, error) {
 	default:
 		return InjectionResult{}, fmt.Errorf("engram: unsupported strategy %q for agent %q", adapter.SystemPromptStrategy(), adapter.Agent())
 	}
+}
+
+// stripSectionWrapper removes the outer <!-- ai-setup:id --> / <!-- /ai-setup:id --> markers
+// from asset files that include them for standalone readability.
+func stripSectionWrapper(content, sectionID string) string {
+	open := fmt.Sprintf("<!-- ai-setup:%s -->", sectionID)
+	close := fmt.Sprintf("<!-- /ai-setup:%s -->", sectionID)
+
+	start := strings.Index(content, open)
+	end := strings.Index(content, close)
+	if start == -1 || end == -1 || end <= start {
+		return content
+	}
+
+	inner := content[start+len(open) : end]
+	return strings.TrimSpace(inner)
 }
 
 func readFileOrEmpty(path string) (string, error) {
