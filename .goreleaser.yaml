@@ -49,19 +49,15 @@ release:
   prerelease: auto
   name_template: "v{{.Version}}"
 
-brews:
+homebrew_casks:
   - name: ai-setup
     repository:
       owner: ISMARZDEV
       name: homebrew-tap
-    directory: Formula
+    directory: Casks
     homepage: "https://github.com/ISMARZDEV/aispace-dev"
     description: "AI coding session manager — installs SDD, Engram, personas and MCP for Claude Code & OpenCode"
     license: "MIT"
-    install: |
-      bin.install "ai-setup"
-    test: |
-      system "#{bin}/ai-setup", "version"
 
 changelog:
   sort: asc
