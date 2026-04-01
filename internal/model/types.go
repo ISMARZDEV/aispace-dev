@@ -87,14 +87,115 @@ const (
 	StrategyMergeIntoSettings MCPStrategy = "merge_into_settings"
 )
 
+// ClaudeModelAlias identifies a Claude model tier.
+type ClaudeModelAlias string
+
+const (
+	ClaudeModelOpus   ClaudeModelAlias = "opus"
+	ClaudeModelSonnet ClaudeModelAlias = "sonnet"
+	ClaudeModelHaiku  ClaudeModelAlias = "haiku"
+)
+
+// ClaudeModelPreset identifies a predefined model assignment strategy.
+type ClaudeModelPreset string
+
+const (
+	ClaudePresetBalanced    ClaudeModelPreset = "balanced"    // opus for arch, sonnet for most, haiku for archive
+	ClaudePresetPerformance ClaudeModelPreset = "performance" // opus for arch/planning/verify
+	ClaudePresetEconomy     ClaudeModelPreset = "economy"     // sonnet for all, haiku for archive
+	ClaudePresetCustom      ClaudeModelPreset = "custom"      // user picks per phase
+)
+
+// SDDPhase identifies a phase in the SDD workflow.
+type SDDPhase string
+
+const (
+	SDDPhaseOrchestrator SDDPhase = "orchestrator"
+	SDDPhaseInit         SDDPhase = "sdd-init"
+	SDDPhaseExplore      SDDPhase = "sdd-explore"
+	SDDPhasePropose      SDDPhase = "sdd-propose"
+	SDDPhaseSpec         SDDPhase = "sdd-spec"
+	SDDPhaseDesign       SDDPhase = "sdd-design"
+	SDDPhaseTasks        SDDPhase = "sdd-tasks"
+	SDDPhaseApply        SDDPhase = "sdd-apply"
+	SDDPhaseVerify       SDDPhase = "sdd-verify"
+	SDDPhaseArchive      SDDPhase = "sdd-archive"
+)
+
+// AllSDDPhases returns the ordered list of SDD phases.
+func AllSDDPhases() []SDDPhase {
+	return []SDDPhase{
+		SDDPhaseOrchestrator,
+		SDDPhaseInit,
+		SDDPhaseExplore,
+		SDDPhasePropose,
+		SDDPhaseSpec,
+		SDDPhaseDesign,
+		SDDPhaseTasks,
+		SDDPhaseApply,
+		SDDPhaseVerify,
+		SDDPhaseArchive,
+	}
+}
+
+// ClaudeModelAssignments maps each SDD phase to a Claude model alias.
+type ClaudeModelAssignments map[SDDPhase]ClaudeModelAlias
+
+// DefaultClaudeAssignments returns the default assignments for a given preset.
+func DefaultClaudeAssignments(preset ClaudeModelPreset) ClaudeModelAssignments {
+	switch preset {
+	case ClaudePresetPerformance:
+		return ClaudeModelAssignments{
+			SDDPhaseOrchestrator: ClaudeModelOpus,
+			SDDPhaseInit:         ClaudeModelOpus,
+			SDDPhaseExplore:      ClaudeModelSonnet,
+			SDDPhasePropose:      ClaudeModelOpus,
+			SDDPhaseSpec:         ClaudeModelOpus,
+			SDDPhaseDesign:       ClaudeModelOpus,
+			SDDPhaseTasks:        ClaudeModelSonnet,
+			SDDPhaseApply:        ClaudeModelSonnet,
+			SDDPhaseVerify:       ClaudeModelOpus,
+			SDDPhaseArchive:      ClaudeModelHaiku,
+		}
+	case ClaudePresetEconomy:
+		return ClaudeModelAssignments{
+			SDDPhaseOrchestrator: ClaudeModelSonnet,
+			SDDPhaseInit:         ClaudeModelSonnet,
+			SDDPhaseExplore:      ClaudeModelSonnet,
+			SDDPhasePropose:      ClaudeModelSonnet,
+			SDDPhaseSpec:         ClaudeModelSonnet,
+			SDDPhaseDesign:       ClaudeModelSonnet,
+			SDDPhaseTasks:        ClaudeModelSonnet,
+			SDDPhaseApply:        ClaudeModelSonnet,
+			SDDPhaseVerify:       ClaudeModelSonnet,
+			SDDPhaseArchive:      ClaudeModelHaiku,
+		}
+	default: // balanced
+		return ClaudeModelAssignments{
+			SDDPhaseOrchestrator: ClaudeModelOpus,
+			SDDPhaseInit:         ClaudeModelSonnet,
+			SDDPhaseExplore:      ClaudeModelSonnet,
+			SDDPhasePropose:      ClaudeModelSonnet,
+			SDDPhaseSpec:         ClaudeModelOpus,
+			SDDPhaseDesign:       ClaudeModelOpus,
+			SDDPhaseTasks:        ClaudeModelSonnet,
+			SDDPhaseApply:        ClaudeModelSonnet,
+			SDDPhaseVerify:       ClaudeModelOpus,
+			SDDPhaseArchive:      ClaudeModelHaiku,
+		}
+	}
+}
+
 // Selection holds the user's install choices before resolution.
 type Selection struct {
-	Agents     []AgentID
-	Components []ComponentID
-	Persona    PersonaID
-	Preset     PresetID
-	SDDMode    SDDModeID
-	StrictTDD  bool
+	Agents               []AgentID
+	Components           []ComponentID
+	Persona              PersonaID
+	Preset               PresetID
+	SDDMode              SDDModeID
+	StrictTDD            bool
+	ClaudeModelPreset    ClaudeModelPreset
+	ClaudeModelAssigns   ClaudeModelAssignments
 }
 
 // InstallState is the persisted state written after a successful install.

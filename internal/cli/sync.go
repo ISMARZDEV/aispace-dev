@@ -217,7 +217,7 @@ func (s componentSyncStep) Run() error {
 
 	case model.ComponentSDD:
 		for _, a := range adapters {
-			res, err := sdd.Inject(s.homeDir, a)
+			res, err := sdd.Inject(s.homeDir, a, nil)
 			if err != nil {
 				return fmt.Errorf("sync sdd for %q: %w", a.Agent(), err)
 			}

@@ -367,7 +367,7 @@ func (s componentApplyStep) Run() error {
 
 	case model.ComponentSDD:
 		for _, adapter := range adapters {
-			if _, err := sdd.Inject(s.homeDir, adapter); err != nil {
+			if _, err := sdd.Inject(s.homeDir, adapter, s.selection.ClaudeModelAssigns); err != nil {
 				return fmt.Errorf("inject sdd for %q: %w", adapter.Agent(), err)
 			}
 		}

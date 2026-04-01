@@ -33,13 +33,14 @@ var sddSkillIDs = []model.SkillID{
 // Inject injects the SDD orchestrator prompt and all 9 SDD phase skill files.
 // Claude Code (MarkdownSections): injects orchestrator as a named section in CLAUDE.md.
 // OpenCode (FileReplace): writes the full AGENTS.md with orchestrator content.
-func Inject(homeDir string, adapter agents.Adapter) (InjectionResult, error) {
+// If assigns is non-nil, a model assignment table is appended to the orchestrator section.
+func Inject(homeDir string, adapter agents.Adapter, assigns model.ClaudeModelAssignments) (InjectionResult, error) {
 	files := make([]string, 0, 12)
 	changed := false
 
 	// 1. Inject orchestrator into system prompt.
 	if adapter.SupportsSystemPrompt() {
-		orchFiles, orchChanged, err := injectOrchestrator(homeDir, adapter)
+		orchFiles, orchChanged, err := injectOrchestrator(homeDir, adapter, assigns)
 		if err != nil {
 			return InjectionResult{}, err
 		}
@@ -60,7 +61,7 @@ func Inject(homeDir string, adapter agents.Adapter) (InjectionResult, error) {
 	return InjectionResult{Changed: changed, Files: files}, nil
 }
 
-func injectOrchestrator(homeDir string, adapter agents.Adapter) ([]string, bool, error) {
+func injectOrchestrator(homeDir string, adapter agents.Adapter, assigns model.ClaudeModelAssignments) ([]string, bool, error) {
 	assetPath := orchestratorAssetPath(adapter.Agent())
 	raw, err := assets.Read(assetPath)
 	if err != nil {
@@ -68,6 +69,11 @@ func injectOrchestrator(homeDir string, adapter agents.Adapter) ([]string, bool,
 	}
 	// Strip outer section markers that the asset includes for standalone readability.
 	content := stripSectionWrapper(raw, "sdd-orchestrator")
+
+	// Append model assignment table for Claude Code agents.
+	if len(assigns) > 0 && adapter.Agent() == model.AgentClaudeCode {
+		content = content + "\n\n" + buildModelAssignmentTable(assigns)
+	}
 
 	promptPath := adapter.SystemPromptFile(homeDir)
 
@@ -154,6 +160,22 @@ func stripSectionWrapper(content, sectionID string) string {
 	}
 
 	return strings.TrimSpace(content[start+len(open) : end])
+}
+
+// buildModelAssignmentTable renders a markdown table of SDD phase → model alias.
+func buildModelAssignmentTable(assigns model.ClaudeModelAssignments) string {
+	var b strings.Builder
+	b.WriteString("### Model Assignments\n\n")
+	b.WriteString("| Phase | Model |\n")
+	b.WriteString("|-------|-------|\n")
+	for _, phase := range model.AllSDDPhases() {
+		alias := assigns[phase]
+		if alias == "" {
+			alias = model.ClaudeModelSonnet
+		}
+		b.WriteString(fmt.Sprintf("| %s | %s |\n", phase, alias))
+	}
+	return b.String()
 }
 
 func readFileOrEmpty(path string) (string, error) {

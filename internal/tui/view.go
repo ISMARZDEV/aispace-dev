@@ -13,6 +13,8 @@ func (m Model) View() string {
 		return screens.RenderPersona(m.cursors[ScreenPersona], m.selectedPersona)
 	case ScreenPreset:
 		return screens.RenderPreset(m.cursors[ScreenPreset], m.selectedPreset)
+	case ScreenModelPicker:
+		return screens.RenderModelPicker(m.modelPickerState)
 	case ScreenReview:
 		return screens.RenderReview(m.selectedAgents, m.selectedPersona, m.selectedPreset, m.resolved)
 	case ScreenProgress:

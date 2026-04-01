@@ -53,6 +53,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updatePersona(msg)
 		case ScreenPreset:
 			return m.updatePreset(msg)
+		case ScreenModelPicker:
+			return m.updateModelPicker(msg)
 		case ScreenReview:
 			return m.updateReview(msg)
 		case ScreenProgress:
@@ -154,15 +156,19 @@ func (m Model) updatePreset(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter":
 		m.selectedPreset = allPresets[m.cursors[ScreenPreset]]
-		// Resolve plan before showing review.
-		sel := m.buildSelection()
-		resolved, err := planner.NewResolver(planner.DefaultGraph()).Resolve(sel)
-		if err != nil {
-			m.err = err
-			return m, nil
+		// Show model picker if SDD is included in the preset.
+		if presetIncludesSDD(m.selectedPreset) {
+			m.screen = ScreenModelPicker
+		} else {
+			sel := m.buildSelection()
+			resolved, err := planner.NewResolver(planner.DefaultGraph()).Resolve(sel)
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
+			m.resolved = resolved
+			m.screen = ScreenReview
 		}
-		m.resolved = resolved
-		m.screen = ScreenReview
 	case "esc", "v":
 		m.screen = ScreenPersona
 	case "q":
@@ -223,12 +229,99 @@ func (m Model) startSync() tea.Cmd {
 	}
 }
 
+func (m Model) updateModelPicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	s := m.modelPickerState
+
+	if s.CustomMode {
+		maxCursor := len(model.AllSDDPhases()) - 1
+		switch msg.String() {
+		case "j", "s", "down":
+			if s.Cursor < maxCursor {
+				s.Cursor++
+			}
+		case "k", "w", "up":
+			if s.Cursor > 0 {
+				s.Cursor--
+			}
+		case " ":
+			s.CyclePhaseModel(s.Cursor)
+		case "enter":
+			s.CyclePhaseModel(s.Cursor)
+		case "c":
+			m.modelPickerState = s
+			return m.resolveAndAdvance()
+		case "esc", "v":
+			s.CustomMode = false
+			s.Cursor = 3 // back to "Custom" row in preset list
+		case "q":
+			return m, tea.Quit
+		}
+		m.modelPickerState = s
+		return m, nil
+	}
+
+	maxCursor := 3 // 4 preset options
+	switch msg.String() {
+	case "j", "s", "down":
+		if s.Cursor < maxCursor {
+			s.Cursor++
+		}
+	case "k", "w", "up":
+		if s.Cursor > 0 {
+			s.Cursor--
+		}
+	case "enter":
+		presets := []model.ClaudeModelPreset{
+			model.ClaudePresetBalanced,
+			model.ClaudePresetPerformance,
+			model.ClaudePresetEconomy,
+			model.ClaudePresetCustom,
+		}
+		s.SelectPreset(presets[s.Cursor])
+		m.modelPickerState = s
+		if s.CustomMode {
+			return m, nil
+		}
+		return m.resolveAndAdvance()
+	case "esc", "v":
+		m.modelPickerState = s
+		m.screen = ScreenPreset
+	case "q":
+		return m, tea.Quit
+	}
+	m.modelPickerState = s
+	return m, nil
+}
+
+func (m Model) resolveAndAdvance() (tea.Model, tea.Cmd) {
+	sel := m.buildSelection()
+	resolved, err := planner.NewResolver(planner.DefaultGraph()).Resolve(sel)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.resolved = resolved
+	m.screen = ScreenReview
+	return m, nil
+}
+
+// presetIncludesSDD returns true when the preset includes the SDD component.
+func presetIncludesSDD(preset model.PresetID) bool {
+	switch preset {
+	case model.PresetFull, model.PresetCore:
+		return true
+	}
+	return false
+}
+
 // buildSelection constructs a model.Selection from current TUI state.
 func (m Model) buildSelection() model.Selection {
 	return model.Selection{
-		Agents:  m.selectedAgents,
-		Persona: m.selectedPersona,
-		Preset:  m.selectedPreset,
+		Agents:             m.selectedAgents,
+		Persona:            m.selectedPersona,
+		Preset:             m.selectedPreset,
+		ClaudeModelPreset:  m.modelPickerState.Preset,
+		ClaudeModelAssigns: m.modelPickerState.Assignments,
 	}
 }
 

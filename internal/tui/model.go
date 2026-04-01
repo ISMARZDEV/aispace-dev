@@ -8,6 +8,7 @@ import (
 	"github.com/ismartz/aispace-setup/internal/pipeline"
 	"github.com/ismartz/aispace-setup/internal/planner"
 	"github.com/ismartz/aispace-setup/internal/system"
+	"github.com/ismartz/aispace-setup/internal/tui/screens"
 )
 
 // TickMsg drives the spinner animation on the progress screen.
@@ -34,10 +35,11 @@ func tickCmd() tea.Cmd {
 type Screen int
 
 const (
-	ScreenWelcome  Screen = iota
+	ScreenWelcome     Screen = iota
 	ScreenAgents
 	ScreenPersona
 	ScreenPreset
+	ScreenModelPicker // shown when SDD component is included
 	ScreenReview
 	ScreenProgress
 	ScreenResult
@@ -61,9 +63,10 @@ type Model struct {
 	version   string
 
 	// Selection state (built up across screens)
-	selectedAgents  []model.AgentID
-	selectedPersona model.PersonaID
-	selectedPreset  model.PresetID
+	selectedAgents       []model.AgentID
+	selectedPersona      model.PersonaID
+	selectedPreset       model.PresetID
+	modelPickerState     screens.ModelPickerState
 
 	// Resolved plan (set when ScreenReview starts the pipeline)
 	resolved planner.ResolvedPlan
@@ -101,14 +104,16 @@ func NewModel(detection system.PlatformProfile, version string) Model {
 		selectedPersona: model.PersonaNeutral,
 		selectedPreset:  model.PresetFull,
 		stepStatuses:    make(map[string]pipeline.StepStatus),
+		modelPickerState: screens.NewModelPickerState(),
 		cursors: map[Screen]int{
-			ScreenWelcome:  0,
-			ScreenAgents:   0,
-			ScreenPersona:  0,
-			ScreenPreset:   0,
-			ScreenReview:   0,
-			ScreenProgress: 0,
-			ScreenResult:   0,
+			ScreenWelcome:     0,
+			ScreenAgents:      0,
+			ScreenPersona:     0,
+			ScreenPreset:      0,
+			ScreenModelPicker: 0,
+			ScreenReview:      0,
+			ScreenProgress:    0,
+			ScreenResult:      0,
 		},
 	}
 }
